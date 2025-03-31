@@ -3,8 +3,8 @@
 
 using Ploter.Parsing;
 
-Parser p = new Parser("cbrt(x) = 3()", 1);
+Parser p = new Parser("cbrt(x) = x^(1/3)", 1);
 
-FunctionDef f = p.Parse();
+FunctionDef f = (FunctionDef) p.Parse();
 
 Console.WriteLine(f.Invoke(-1));
