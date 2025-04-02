@@ -5,11 +5,11 @@ using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Ploter.Parsing
+namespace Plotter.Parsing
 {
-    public abstract class Expression
+    public interface IExpression
     {
-        abstract public Complex Resolve(List<Variable> variables, List<FunctionDef> functions);
-        abstract public bool DependsOn(string name);
+        Complex Resolve(List<Definition> definitions);
+        bool DependsOn(string name);
     }
 }

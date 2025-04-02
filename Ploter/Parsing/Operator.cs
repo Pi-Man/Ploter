@@ -5,28 +5,28 @@ using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Ploter.Parsing
+namespace Plotter.Parsing
 {
-    internal class Operator : Expression
+    internal class Operator : IExpression
     {
-        public Expression Left { get; set; }
-        public Expression Right { get; set; }
+        public IExpression Left { get; set; }
+        public IExpression Right { get; set; }
 
         public Func<Complex, Complex, Complex> Op { get; set; }
 
-        public Operator(Expression left, Expression right, Func<Complex, Complex, Complex> op)
+        public Operator(IExpression left, IExpression right, Func<Complex, Complex, Complex> op)
         {
             Left = left;
             Right = right;
             Op = op;
         }
 
-        public override Complex Resolve(List<Variable> variables, List<FunctionDef> functions)
+        public Complex Resolve(List<Definition> definitions)
         {
-            return Op.Invoke(Left.Resolve(variables, functions), Right.Resolve(variables, functions));
+            return Op.Invoke(Left.Resolve(definitions), Right.Resolve(definitions));
         }
 
-        public override bool DependsOn(string name)
+        public bool DependsOn(string name)
         {
             return Left.DependsOn(name) || Right.DependsOn(name);
         }

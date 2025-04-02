@@ -1,4 +1,4 @@
-﻿namespace Ploter.Patches
+﻿namespace Plotter.Patches
 {
     public static class Complex
     {

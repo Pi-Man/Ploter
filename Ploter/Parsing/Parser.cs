@@ -7,28 +7,28 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 
-namespace Ploter.Parsing
+namespace Plotter.Parsing
 {
     public class Parser
     {
 
-        private readonly Dictionary<char, Func<Complex, Complex, Complex>> _func_map;
+        private readonly Dictionary<char, Func<Complex, Complex, Complex>> _func_map = new Dictionary<char, Func<Complex, Complex, Complex>>()
+        {
+            ['+'] = (c1, c2) => c1 + c2,
+            ['-'] = (c1, c2) => c1 - c2,
+            ['*'] = (c1, c2) => c1 * c2,
+            ['/'] = (c1, c2) => c1 / c2,
+            ['%'] = (c1, c2) => new Complex(c1.Real % c2.Real, c1.Imaginary % c2.Imaginary),
+            ['^'] = (c1, c2) => Patches.Complex.Pow(c1, c2, StandardDefinitions.POW_K.Value),
+        };
 
         private readonly string _text;
-        private readonly int _k;
-        public Parser(string text, int k)
+        private readonly List<Definition> _context;
+
+        public Parser(string text, List<Definition> context)
         {
             _text = text;
-            _k = k;
-            _func_map = new Dictionary<char, Func<Complex, Complex, Complex>>()
-            {
-                ['+'] = (c1, c2) => c1 + c2,
-                ['-'] = (c1, c2) => c1 - c2,
-                ['*'] = (c1, c2) => c1 * c2,
-                ['/'] = (c1, c2) => c1 / c2,
-                ['%'] = (c1, c2) => new Complex(c1.Real % c2.Real, c1.Imaginary % c2.Imaginary),
-                ['^'] = (c1, c2) => Patches.Complex.Pow(c1, c2, _k),
-            };
+            _context = context;
         }
 
         public Definition Parse()
@@ -68,14 +68,9 @@ namespace Ploter.Parsing
             {
                 throw new Exception("Could not parse function definition");
             }
-            if (parameters.Length != 0)
-            {
-                return new FunctionDef(name, parameters, ParseExpression(_text[index2..]));
-            }
-            else
-            {
-                return new VariableDef(name, ParseExpression(_text[index2..]));
-            }
+            Definition def = new Definition(name, parameters, ParseExpression(_text[index2..]), _context);
+            _context.Add(def);
+            return def;
         }
 
         private static bool ParseFunctionDef(string text, out string name, out string[] parameters)
@@ -109,7 +104,7 @@ namespace Ploter.Parsing
             return true;
         }
 
-        private Expression ParseExpression(string text)
+        private IExpression ParseExpression(string text)
         {
             text = text.Trim();
 
@@ -120,7 +115,7 @@ namespace Ploter.Parsing
 
             if (text[0] == '-')
             {
-                return new Operator(new Value(-1), ParseExpression(text[1..]), _func_map['*']);
+                return new Operator(new Literal(-1), ParseExpression(text[1..]), _func_map['*']);
             }
             for (int i = text.Length - 1; i >= 0; i--)
             {
@@ -185,12 +180,12 @@ namespace Ploter.Parsing
                 text = ParseIdentifier(text, out string name).Trim();
                 if (string.IsNullOrEmpty(text))
                 {
-                    return new Variable(name);
+                    return new Call(name, []);
                 }
                 if (text[0] == '(')
                 {
                     if (text[^1] == ')') {
-                        return new FunctionCall(name, text[1..^1].Split(',').Select(ParseExpression).ToList());
+                        return new Call(name, text[1..^1].Split(',').Select(ParseExpression).ToList());
                     }
                     else
                     {
@@ -199,23 +194,19 @@ namespace Ploter.Parsing
                 }
                 else
                 {
-                    throw new Exception("");
+                    return new Operator(new Call(name, []), ParseExpression(text), _func_map['*']);
                 }
             }
             else if (char.IsDigit(text[0]))
             {
-                text = ParseLiteral(text, out Value value);
+                text = ParseLiteral(text, out Literal value);
                 if (string.IsNullOrEmpty(text.Trim()))
                 {
                     return value;
                 }
                 else
                 {
-                    if (text[0] == '(')
-                    {
-                        return new Operator(value, ParseExpression(text), _func_map['*']);
-                    }
-                    throw new Exception($"Could not parse literal: {text}");
+                    return new Operator(value, ParseExpression(text), _func_map['*']);
                 }
             }
             else
@@ -236,7 +227,7 @@ namespace Ploter.Parsing
             return text[i..];
         }
 
-        private static string ParseLiteral(string text, out Value value)
+        private static string ParseLiteral(string text, out Literal value)
         {
             StringBuilder valueBuilder = new StringBuilder();
             int i;
@@ -246,7 +237,7 @@ namespace Ploter.Parsing
                 if (text[i] == '.') flag = false;
                 valueBuilder.Append(text[i]);
             }
-            value = new Value(double.Parse(valueBuilder.ToString()));
+            value = new Literal(double.Parse(valueBuilder.ToString()));
             return text[i..];
         }
     }

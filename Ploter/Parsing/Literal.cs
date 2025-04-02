@@ -5,23 +5,23 @@ using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Ploter.Parsing
+namespace Plotter.Parsing
 {
-    internal class Value : Expression
+    public class Literal : IExpression
     {
         public Complex Val { get; set; }
 
-        public Value(Complex val)
+        public Literal(Complex val)
         {
             Val = val;
         }
 
-        public override Complex Resolve(List<Variable> variables, List<FunctionDef> functions)
+        public Complex Resolve(List<Definition> definitions)
         {
             return Val;
         }
 
-        public override bool DependsOn(string name)
+        public bool DependsOn(string name)
         {
             return false;
         }

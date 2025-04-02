@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.10.35027.167
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ploter", "Ploter\Ploter.csproj", "{79D187E1-6ADA-4114-9A1F-FEB4F3F85AAE}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Plotter", "Ploter\Plotter.csproj", "{79D187E1-6ADA-4114-9A1F-FEB4F3F85AAE}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Testing", "Testing\Testing.csproj", "{CB226C81-FB52-49E1-AD21-8379E37A6EC2}"
 EndProject
