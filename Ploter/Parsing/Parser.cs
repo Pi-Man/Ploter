@@ -126,10 +126,13 @@ namespace Plotter.Parsing
                 }
                 else if (c == ')')
                 {
-                    while (c != '(')
+                    int j = 1;
+                    while (j != 0)
                     {
                         i--;
                         c = text[i];
+                        if (c == ')') j++;
+                        if (c == '(') j--;
                     }
                 }
             }
@@ -142,10 +145,13 @@ namespace Plotter.Parsing
                 }
                 else if (c == ')')
                 {
-                    while (c != '(')
+                    int j = 1;
+                    while (j != 0)
                     {
                         i--;
                         c = text[i];
+                        if (c == ')') j++;
+                        if (c == '(') j--;
                     }
                 }
             }
@@ -158,10 +164,13 @@ namespace Plotter.Parsing
                 }
                 else if (c == ')')
                 {
-                    while (c != '(')
+                    int j = 1;
+                    while (j != 0)
                     {
                         i--;
                         c = text[i];
+                        if (c == ')') j++;
+                        if (c == '(') j--;
                     }
                 }
             }
