@@ -11,5 +11,6 @@ namespace Plotter.Parsing
     {
         Complex Resolve(List<Definition> definitions);
         bool DependsOn(string name);
+        Call[] GetCalls(string name);
     }
 }

@@ -25,5 +25,10 @@ namespace Plotter.Parsing
         {
             return false;
         }
+
+        public Call[] GetCalls(string name)
+        {
+            return [];
+        }
     }
 }

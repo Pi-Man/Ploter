@@ -28,10 +28,12 @@ namespace Plotter
             try
             {
                 _definition = parser.Parse();
+                _context.Add(_definition);
                 return true;
             }
             catch (Exception e)
             {
+                Console.Error.WriteLine(e.StackTrace);
                 _error = e.Message;
                 return false;
             }
@@ -64,6 +66,14 @@ namespace Plotter
                 return _definition.Invoke(args);
             }
             return Complex.NaN;
+        }
+
+        public void Reset()
+        {
+            if (_definition is RecursiveDefinition recursive)
+            {
+                recursive.ClearCache();
+            }
         }
     }
 }

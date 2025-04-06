@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Plotter.Patches;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -12,15 +13,15 @@ namespace Plotter.Parsing
     public class Parser
     {
 
-        private readonly Dictionary<char, Func<Complex, Complex, Complex>> _func_map = new Dictionary<char, Func<Complex, Complex, Complex>>()
+        public enum EquationType
         {
-            ['+'] = (c1, c2) => c1 + c2,
-            ['-'] = (c1, c2) => c1 - c2,
-            ['*'] = (c1, c2) => c1 * c2,
-            ['/'] = (c1, c2) => c1 / c2,
-            ['%'] = (c1, c2) => new Complex(c1.Real % c2.Real, c1.Imaginary % c2.Imaginary),
-            ['^'] = (c1, c2) => Patches.Complex.Pow(c1, c2, StandardDefinitions.POW_K.Value),
-        };
+            GTE,
+            LTE,
+            GT,
+            LT,
+            EQ,
+            ERR,
+        }
 
         private readonly string _text;
         private readonly List<Definition> _context;
@@ -35,42 +36,62 @@ namespace Plotter.Parsing
         {
             int index = 0;
             int index2 = 0;
-            int type = -1;
-            index = _text.LastIndexOf(">=");
-            index2 = index + 2;
-            type = 0;
-            if (index == -1)
+            EquationType type = EquationType.ERR;
+            string left;
+            string right;
+            string name;
+            string[] parameters;
+            IExpression expr;
+            if (_text.TrySplit(">=", out left, out right))
             {
-                index = _text.LastIndexOf("<=");
-                index2 = index + 2;
-                type = 1;
+                type = EquationType.GTE;
             }
-            if (index == -1)
+            else if (_text.TrySplit("<=", out left, out right))
             {
-                index = _text.LastIndexOf(">");
-                index2 = index + 1;
-                type = 2;
+                type = EquationType.LTE;
             }
-            if (index == -1)
+            else if (_text.TrySplit(">", out left, out right))
             {
-                index = _text.LastIndexOf("<");
-                index2 = index + 1;
-                type = 3;
+                type = EquationType.GT;
             }
-            if (index == -1)
+            else if (_text.TrySplit("<", out left, out right))
             {
-                index = _text.LastIndexOf("=");
-                index2 = index + 1;
-                type = 4;
+                type = EquationType.LT;
             }
-            bool ok = ParseFunctionDef(_text[..index], out string name, out string[] parameters);
-            if (!ok)
+            if (_text.TrySplit("=", out left, out right))
+            {
+                type = EquationType.EQ;
+                if (!ParseFunctionDef(left, out name, out parameters))
+                {
+                    throw new Exception("Could not parse function definition");
+                }
+                if (right.TrySplit(";", out string exprStr, out string initialsString))
+                {
+                    expr = ParseExpression(exprStr);
+                    if (expr.DependsOn(name))
+                    {
+                        if (parameters.Length != 1)
+                        {
+                            throw new Exception("Recursive function must be a single variable function");
+                        }
+                        else
+                        {
+                            List<IExpression> initials = initialsString.Split(',', StringSplitOptions.TrimEntries).Select(ParseExpression).ToList();
+                            return new RecursiveDefinition(name, parameters[0], expr, initials, _context);
+                        }
+                    }
+                }
+            }
+            if (!ParseFunctionDef(left, out name, out parameters))
             {
                 throw new Exception("Could not parse function definition");
             }
-            Definition def = new Definition(name, parameters, ParseExpression(_text[index2..]), _context);
-            _context.Add(def);
-            return def;
+            expr = ParseExpression(right);
+            if (expr.DependsOn(name))
+            {
+                throw new Exception("Inequalities can not be Recursive");
+            }
+            return new Definition(name, parameters, expr, _context);
         }
 
         private static bool ParseFunctionDef(string text, out string name, out string[] parameters)
@@ -115,14 +136,14 @@ namespace Plotter.Parsing
 
             if (text[0] == '-')
             {
-                return new Operator(new Literal(-1), ParseExpression(text[1..]), _func_map['*']);
+                return new Operator(new Literal(-1), ParseExpression(text[1..]), Operator.MUL);
             }
             for (int i = text.Length - 1; i >= 0; i--)
             {
                 char c = text[i];
                 if (c == '+' || c == '-')
                 {
-                    return new Operator(ParseExpression(text[..i]), ParseExpression(text[(i + 1)..]), _func_map[c]);
+                    return new Operator(ParseExpression(text[..i]), ParseExpression(text[(i + 1)..]), Operator.Map[c]);
                 }
                 else if (c == ')')
                 {
@@ -141,7 +162,7 @@ namespace Plotter.Parsing
                 char c = text[i];
                 if (c == '*' || c == '/' || c == '%')
                 {
-                    return new Operator(ParseExpression(text[..i]), ParseExpression(text[(i + 1)..]), _func_map[c]);
+                    return new Operator(ParseExpression(text[..i]), ParseExpression(text[(i + 1)..]), Operator.Map[c]);
                 }
                 else if (c == ')')
                 {
@@ -160,7 +181,7 @@ namespace Plotter.Parsing
                 char c = text[i];
                 if (c == '^')
                 {
-                    return new Operator(ParseExpression(text[..i]), ParseExpression(text[(i + 1)..]), _func_map[c]);
+                    return new Operator(ParseExpression(text[..i]), ParseExpression(text[(i + 1)..]), Operator.Map[c]);
                 }
                 else if (c == ')')
                 {
@@ -182,7 +203,7 @@ namespace Plotter.Parsing
                     return ParseExpression(text[1..^1]);
                 }
                 int index = text.LastIndexOf(')');
-                return new Operator(ParseExpression(text[1..index]), ParseExpression(text[(index + 1)..]), _func_map['*']);
+                return new Operator(ParseExpression(text[1..index]), ParseExpression(text[(index + 1)..]), Operator.MUL);
             }
             else if (char.IsLetter(text[0]))
             {
@@ -203,7 +224,7 @@ namespace Plotter.Parsing
                 }
                 else
                 {
-                    return new Operator(new Call(name, []), ParseExpression(text), _func_map['*']);
+                    return new Operator(new Call(name, []), ParseExpression(text), Operator.MUL);
                 }
             }
             else if (char.IsDigit(text[0]))
@@ -215,7 +236,7 @@ namespace Plotter.Parsing
                 }
                 else
                 {
-                    return new Operator(value, ParseExpression(text), _func_map['*']);
+                    return new Operator(value, ParseExpression(text), Operator.MUL);
                 }
             }
             else

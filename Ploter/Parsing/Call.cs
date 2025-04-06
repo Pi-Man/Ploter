@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Plotter.Parsing
 {
-    internal class Call : IExpression
+    public class Call : IExpression
     {
         public string Name { get; set; }
         public List<IExpression> Arguments { get; set; }
@@ -32,7 +32,41 @@ namespace Plotter.Parsing
 
         public bool DependsOn(string name)
         {
-            return Arguments.Any(exp => exp.DependsOn(name));
+            return name.Equals(Name) || Arguments.Any(exp => exp.DependsOn(name));
+        }
+
+        public Call[] GetCalls(string name)
+        {
+            return name.Equals(Name) ? [this] : Arguments.SelectMany(expr => expr.GetCalls(name)).ToArray();
+        }
+
+        public int GetRecursionOffset(string argName)
+        {
+            if (Arguments is
+            [
+                Operator
+            {
+                Left: Call
+                {
+                    Name: var callName,
+                    Arguments: [],
+                },
+                Right: Literal
+                {
+                    Val: Complex
+                    {
+                        Real: var val,
+                        Imaginary: 0
+                    }
+                },
+                Op: var op
+            }
+            ]
+            && callName.Equals(argName)
+            && val == Math.Floor(val)
+            && op == Operator.SUB)
+                return (int)val;
+            else throw new Exception("Recursive calls do not match the form 'name(param - integerLiteral)'");
         }
     }
 }

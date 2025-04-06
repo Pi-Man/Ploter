@@ -2,6 +2,7 @@
 using Plotter.Parsing;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Drawing;
 using System.Linq;
 using System.Numerics;
@@ -16,7 +17,11 @@ namespace Plotter
 
         private readonly List<Entry> _entries;
 
+        private double _len;
+
         private static readonly int SIZE = 0;
+
+        private static readonly double LENGTH = 0;
 
         private static readonly Color[] colors = [Color.Red, Color.Blue, Color.Yellow, Color.Black, Color.Green];
 
@@ -54,10 +59,16 @@ namespace Plotter
             int c = 0;
             foreach (var entry in _entries)
             {
+                _len = 0;
                 if (!entry.Parsed()) 
                     entry.Parse();
+                if (entry.HasError())
+                {
+                    Console.Error.WriteLine(entry.GetError());
+                }
                 if (entry.CanRender())
                 {
+                    entry.Reset();
                     int pj = int.MaxValue;
                     for (int i = 0; i < w; i++)
                     {
@@ -66,20 +77,23 @@ namespace Plotter
                         if (val.IsReal() || Math.Abs(val.Real / val.Imaginary) > 1_000_000_000)
                         {
                             double y = val.Real;
-                            Console.WriteLine(y);
 
                             int j = (int)Math.Floor((y - ymin) / (ymax - ymin) * h);
                             if (pj == int.MaxValue) pj = j;
 
-                            Fill(texture, i, j, w, h, colors[c]);
-
                             if (pj >= 0 && pj < h || j >= 0 && j < h)
                             {
-                                for (int j2 = j; j2 != pj; j2 += Math.Sign(pj - j))
+                                int s = Math.Sign(j - pj);
+                                double d = Math.Sqrt(2);
+                                for (int j2 = pj + s; j2 != j; j2 += s)
                                 {
-                                    Fill(texture, i, j2, w, h, colors[c]);
+                                    Fill(texture, i, j2, w, h, colors[c], d);
+                                    d = 1;
                                 }
                             }
+
+                            Fill(texture, i, j, w, h, colors[c], Math.Abs(pj - j) == 1 ? Math.Sqrt(2) : 1);
+
                             pj = j;
                         }
                         else
@@ -87,21 +101,25 @@ namespace Plotter
                             pj = int.MaxValue;
                         }
                     }
+                    c++;
                 }
-                c++;
             }
             return texture;
         }
 
-        private static void Fill(Color[,] texture, int x, int y, int w, int h, Color color)
+        private void Fill(Color[,] texture, int x, int y, int w, int h, Color color, double d)
         {
+            if (LENGTH > 0) _len = (_len + d) % (LENGTH * 2);
             for (int j = y - SIZE; j <= y + SIZE; j++)
             {
                 for (int i = x - SIZE; i <= x + SIZE; i++)
                 {
                     if (i < w && j < h && i >= 0 && j >= 0)
                     {
-                        texture[i, j] = color;
+                        if (LENGTH <= 0 || _len < LENGTH)
+                        {
+                            texture[i, j] = color;
+                        }
                     }
                 }
             }
